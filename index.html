@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Date Navigation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        #dateDisplay {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        #btnPrevious, #btnNext {
+            padding: 10px 20px;
+            margin: 0 10px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+        }
+
+        #projectsContainer {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+<div id="dateDisplay"></div>
+<button id="btnPrevious" onclick="changeDate(-1)">Previous</button>
+<button id="btnNext" onclick="changeDate(1)">Next</button>
+<div id="projectsContainer"></div>
+
+<script>
+    function changeDate(change) {
+        const currentDate = new Date();
+        const urlDate = getParameterByName('date');
+        const displayDate = urlDate ? new Date(urlDate) : currentDate;
+        displayDate.setDate(displayDate.getDate() + change);
+        const dateString = displayDate.toISOString().split('T')[0];
+        window.location.href = window.location.pathname + '?date=' + dateString;
+    }
+
+    function getParameterByName(name, url) {
+        if (!url) url = window.location.href;
+        name = name.replace(/[\[\]]/g, '\\$&');
+        const regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)');
+        const results = regex.exec(url);
+        if (!results) return null;
+        if (!results[2]) return '';
+        return decodeURIComponent(results[2].replace(/\+/g, ' '));
+    }
+
+    function displayProjects(jsonData) {
+        const projects = jsonData.projects;
+        const projectsContainer = document.getElementById('projectsContainer');
+        projectsContainer.innerHTML = ''; // Clear previous content
+
+        projects.forEach(project => {
+            const projectElement = document.createElement('div');
+            projectElement.textContent = project;
+            projectsContainer.appendChild(projectElement);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const dateDisplay = document.getElementById('dateDisplay');
+        const urlDate = getParameterByName('date');
+        const displayDate = urlDate ? new Date(urlDate) : new Date();
+        dateDisplay.textContent = displayDate.toDateString();
+
+        fetch('example.json')
+            .then(response => response.json())
+            .then(data => {
+                displayProjects(data);
+            })
+            .catch(error => {
+                console.error('Error fetching JSON:', error);
+            });
+    });
+
+</script>
+
+</body>
+</html>
