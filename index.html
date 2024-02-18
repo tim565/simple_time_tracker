@@ -15,26 +15,43 @@
             margin-bottom: 20px;
         }
 
-        #btnPrevious, #btnNext {
+        #btnPrevious, #btnNext, #btnToday {
             padding: 10px 20px;
             margin: 0 10px;
             cursor: pointer;
-            background-color: #007bff;
-            color: #fff;
             border: none;
             border-radius: 5px;
         }
 
+        #btnPrevious, #btnNext {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        #btnToday {
+            background-color: gray;
+            color: #fff;
+        }
+
         #projectsContainer {
             margin-top: 20px;
+        }
+
+        #summaryContainer {
+            margin-top: 20px;
+            text-align: left;
         }
     </style>
 </head>
 <body>
 <div id="dateDisplay"></div>
 <button id="btnPrevious" onclick="changeDate(-1)">Previous</button>
+<button id="btnToday" onclick="goToToday()">Today</button>
 <button id="btnNext" onclick="changeDate(1)">Next</button>
 <div id="projectsContainer"></div>
+<div id="tasksContainer"></div>
+<div id="summaryContainer"></div>
+
 
 <script>
     function changeDate(change) {
@@ -44,6 +61,12 @@
         displayDate.setDate(displayDate.getDate() + change);
         const dateString = displayDate.toISOString().split('T')[0];
         window.location.href = window.location.pathname + '?date=' + dateString;
+    }
+
+    function goToToday() {
+        const today = new Date();
+        const todayString = today.toISOString().split('T')[0];
+        window.location.href = window.location.pathname + '?date=' + todayString;
     }
 
     function getParameterByName(name, url) {
@@ -68,20 +91,101 @@
         });
     }
 
+    function displayTasks(tasks) {
+        const tasksContainer = document.getElementById('tasksContainer');
+        tasksContainer.innerHTML = ''; // Clear previous content
+
+        tasks.forEach(task => {
+            const taskElement = document.createElement('div');
+            const startTime = new Date(task.startTime);
+            const endTime = new Date(task.endTime);
+            const durationInMinutes = (endTime - startTime) / (1000 * 60); // Difference in minutes
+            const durationHours = Math.floor(durationInMinutes / 60); // Hours
+            const durationMinutes = durationInMinutes % 60; // Minutes
+
+            taskElement.innerHTML = `
+                <p><strong>Project Name:</strong> ${task.projectName}</p>
+                <p><strong>Description:</strong> ${task.description}</p>
+                <p><strong>Start Time:</strong> ${task.startTime.split('T')[1].slice(0, 5)}</p>
+                <p><strong>End Time:</strong> ${task.endTime.split('T')[1].slice(0, 5)}</p>
+                <p><strong>Duration:</strong> ${durationHours} hours ${durationMinutes} minutes</p>
+                <p><strong>Productivity:</strong> ${task.productivity}</p>
+                <hr>
+            `;
+            tasksContainer.appendChild(taskElement);
+        });
+
+        // Calculate and display summary
+        displaySummary(tasks);
+    }
+
+    function getTasksForDate(jsonData, date) {
+        return jsonData.days[date] || [];
+    }
+
+    function displaySummary(tasks) {
+        const summaryContainer = document.getElementById('summaryContainer');
+        summaryContainer.innerHTML = ''; // Clear previous content
+
+        // Create an object to store total duration for each project
+        const projectDurations = {};
+
+        tasks.forEach(task => {
+            if (!projectDurations[task.projectName]) {
+                projectDurations[task.projectName] = 0; // Initialize total duration for the project
+            }
+            const startTime = new Date(task.startTime);
+            const endTime = new Date(task.endTime);
+            const durationInMinutes = (endTime - startTime) / (1000 * 60); // Difference in minutes
+            projectDurations[task.projectName] += durationInMinutes; // Add duration to total
+        });
+
+        // Display total duration for each project
+        Object.keys(projectDurations).forEach(project => {
+            const totalDurationHours = Math.floor(projectDurations[project] / 60); // Hours
+            const totalDurationMinutes = Math.floor(projectDurations[project] % 60); // Minutes
+            const summaryElement = document.createElement('div');
+            summaryElement.innerHTML = `
+                <p><strong>${project}:</strong> ${totalDurationHours} hours ${totalDurationMinutes} minutes</p>
+            `;
+            summaryContainer.appendChild(summaryElement);
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const dateDisplay = document.getElementById('dateDisplay');
         const urlDate = getParameterByName('date');
         const displayDate = urlDate ? new Date(urlDate) : new Date();
         dateDisplay.textContent = displayDate.toDateString();
 
+        // Get the date from the GET parameter
+        const dateParam = getParameterByName('date');
+        const currentDate = dateParam ? new Date(dateParam) : new Date();
+        const dateString = currentDate.toISOString().split('T')[0];
+
         fetch('example.json')
             .then(response => response.json())
             .then(data => {
                 displayProjects(data);
+
+                // Get tasks for the specified date
+                const tasks = getTasksForDate(data, dateString);
+                // Display tasks on the webpage
+                displayTasks(tasks);
             })
             .catch(error => {
                 console.error('Error fetching JSON:', error);
             });
+
+        // Update button style
+        const todayButton = document.getElementById('btnToday');
+        const today = new Date();
+        const todayString = today.toISOString().split('T')[0];
+        if (dateString === todayString) {
+            todayButton.style.backgroundColor = 'gray';
+        } else {
+            todayButton.style.backgroundColor = 'green';
+        }
     });
 
 </script>
