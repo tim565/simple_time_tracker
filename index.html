@@ -41,6 +41,21 @@
             margin-top: 20px;
             text-align: left;
         }
+
+        .startButton {
+            margin-left: 10px;
+            padding: 5px 10px;
+            cursor: pointer;
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .startButton[disabled] {
+            background-color: lightgray;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -86,9 +101,54 @@
 
         projects.forEach(project => {
             const projectElement = document.createElement('div');
-            projectElement.textContent = project;
+            const today = new Date();
+            const urlDate = getParameterByName('date');
+            const displayDate = urlDate ? new Date(urlDate) : today;
+            const dateString = displayDate.toISOString().split('T')[0];
+            const isToday = dateString === today.toISOString().split('T')[0];
+
+            projectElement.innerHTML = `
+                <span>${project}</span>
+                <button class="startButton" onclick="startTask('${project}')" ${isToday ? '' : 'disabled'}>Start</button>
+                <span id="startTime_${project}" style="margin-left: 10px;"></span>
+
+            `;
             projectsContainer.appendChild(projectElement);
         });
+    }
+
+    function startTask(projectName) {
+        const currentDate = new Date();
+        const dateString = currentDate.toISOString().split('T')[0];
+        fetch('example.json')
+            .then(response => response.json())
+            .then(data => {
+                const tasks = data.days[dateString] || [];
+                const highestObjectId = tasks.length > 0 ? Math.max(...tasks.map(task => parseInt(task.objectID))) : 0;
+                const newObjectId = highestObjectId + 1;
+                const newTask = {
+                    objectID: newObjectId.toString(),
+                    projectName: projectName,
+                    description: "",
+                    startTime: currentDate.toISOString(),
+                    endTime: "",
+                    productivity: ""
+                };
+                data.days[dateString] = [...tasks, newTask];
+                return fetch('example.json', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+            })
+            .then(() => {
+                window.location.reload(); // Refresh the page to reflect changes
+            })
+            .catch(error => {
+                console.error('Error starting task:', error);
+            });
     }
 
     function displayTasks(tasks) {
